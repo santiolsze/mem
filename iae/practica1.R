@@ -24,27 +24,31 @@ sort(oz)[116 * .25]  # Justo da un entero, así que en la px 29 hay un 18 y en l
 # f ) Definir Boxplot.
 # g) Representar un boxplot de la variable Ozone por cada mes registrado (Boxplots paralelos)
 boxplot(airquality$Ozone ~ airquality$Month)
-# h) ¿Existe alguna relaci´on entre la media y la mediana muestrales?
+# h) ¿Existe alguna relacion entre la media y la mediana muestrales?
 
 summary(oz)  # La media es más grande que la mediana
 
 
 # i) Graficar el histograma de frecuencias.
-hist(oz, breaks = 10)
+hist(oz)
 
 # j) ¿C´omo se obtienen las alturas de las barras? 
 ...
 # k) Graficar el histograma de densidad. ¿En qu´e se diferencia del histograma de frecuencias?
-hist(oz, breaks = 10, freq =  F)
-# l) ¿C´omo se obtienen las alturas de las barras en este caso?
-...
+par(mfrow=c(1,2))
+hist(oz)
+hist(oz, freq =  F)
+dev.off()
+# l) ¿C´omo se obtienen las alturas de las barras en este caso? 
+hist(oz)$density
+... # El area es la proporcion, así que la altura esr(proporcion / longitud).
 # m) En base al histograma de densidad, obtener la proporci´on de observaciones que se encuentran entre 0 y 40.
-sum(oz < 40 & oz >= 0) / length(oz)
+hist(oz, breaks = c(0,40, 80, 120, 180))$density[1]*40
+sum(oz <= 40) / length(oz) # para chequear 
 # n) ¿Qu´e sucede al refinar el histograma?
 hist(oz, 10000)
 # ñ) Realizar un histograma de Ozone para cada mes considerado.
 library(ggplot2)
-
 ggplot(airquality, aes(x=Ozone)) +
   geom_histogram(fill="gray", color="black") +
   facet_wrap(~ Month, nrow = 1) +
@@ -63,3 +67,34 @@ barplot(table(mes))
 ...
 # e) Crear una variable factor que indique con 1 si la concentraci´on de Ozone es inferior a 30 y 0 en caso contrario y obtener, por mes, la proporci´on de d´ıas
 # cuya concentraci´on de Ozono es inferior a 30.
+lowOz <- as.factor(ifelse(airquality$Ozone < 30, 1, 0))
+
+d <- table(airquality$Month, lowOz)
+d[,2] / (d[,1] + d[,2]) * 100
+
+plot(d)
+################################################################################
+############################### EJERCICIO 2 ####################################
+################################################################################
+library(dplyr)
+titanic <- read.csv("../../Downloads/titanic.csv", header = T, sep = "\t")
+
+titanic %>% View()
+nrow(titanic); ncol(titanic)
+
+titanic %>% group_by(pclass) %>% summarise(n = n(), surv = sum(survived == 1), prop = round(sum(survived == 1) / n(),4))
+
+titanic %>% group_by(pclass) %>% summarise(min = min(fare, na.rm = T),
+                                           q25 = quantile(fare, 0.25, na.rm = T),
+                                           media = mean(fare, na.rm = T),
+                                           mediana = median(fare, na.rm = T),
+                                           q75 = quantile(fare, 0.75, na.rm = T),
+                                           max = max(fare, na.rm = T),
+                                           nas = sum(is.na(fare)),
+                                           n = n()
+                                           )
+
+boxplot(log(titanic$fare) ~ titanic$pclass)
+
+
+
