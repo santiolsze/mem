@@ -138,3 +138,15 @@ lines(x_nuevas, h50, col = "black", lwd =1.5, lty = "dashed")
 ################################################################################
 ##########################   EJERCICIO 4   #####################################
 ################################################################################
+
+# 14. Utilizar la funci´on ksmooth de R para predecir la altura de un hijo (var´on) cuya madre mide
+#     156 cm, aplicando promedios locales con ventana h = 2. Verificar con el valor obtenido en el
+#     Ejercicio 2, ´ıtem 9c.
+h = 2
+ksmooth(alturasdat500m$altura_madre,
+        alturasdat500m$altura,
+        kernel = "box",
+        x.points = 156,
+        bandwidth = 2*h
+)$y
+  
