@@ -77,8 +77,11 @@ plot(d)
 ############################### EJERCICIO 2 ####################################
 ################################################################################
 library(dplyr)
-titanic <- read.csv("../../Downloads/titanic.csv", header = T, sep = "\t")
+library(stringr)
 
+titanic <- read.csv("../../Downloads/titanic.csv", header = T, sep = "\t")
+titanic <- titanic %>% mutate(age_num = as.numeric(str_replace_all(age, " ", ""))) 
+titanic %>% select(age, age_num) %>% View()
 titanic %>% View()
 nrow(titanic); ncol(titanic)
 
@@ -91,10 +94,33 @@ titanic %>% group_by(pclass) %>% summarise(min = min(fare, na.rm = T),
                                            q75 = quantile(fare, 0.75, na.rm = T),
                                            max = max(fare, na.rm = T),
                                            nas = sum(is.na(fare)),
-                                           n = n()
+                                           n = n(),
+                                           n_unique = length(unique(fare))
                                            )
 
 boxplot(log(titanic$fare) ~ titanic$pclass)
 
+boxplot(titanic$fare ~ titanic$pclass)
 
 
+dev.off()
+
+boxplot(titanic$age_num ~ titanic$pclass)
+
+
+par(mfrow=c(3,1))
+hist(titanic[titanic$pclass == 1, ]$age_num, xlim = c(0,90) ,nclass = 10)
+hist(titanic[titanic$pclass == 2, ]$age_num, xlim = c(0,90) ,nclass = 10)
+hist(titanic[titanic$pclass == 3, ]$age_num, xlim = c(0,90) ,nclass = 10)
+
+
+titanic %>% group_by(pclass) %>% summarise(min = min(age_num, na.rm = T),
+                                           q25 = quantile(age_num, 0.25, na.rm = T),
+                                           media = mean(age_num, na.rm = T),
+                                           mediana = median(age_num, na.rm = T),
+                                           q75 = quantile(age_num, 0.75, na.rm = T),
+                                           max = max(age_num, na.rm = T),
+                                           nas = sum(is.na(age_num)),
+                                           n = n(),
+                                           n_unique = length(unique(age_num))
+)

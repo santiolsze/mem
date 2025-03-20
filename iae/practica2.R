@@ -1,6 +1,8 @@
 ################################################################################
 ##########################   EJERCICIO 1   #####################################
 ################################################################################
+library(dplyr)
+library(ggplot2)
 # 1. Descargar de la p´agina dos conjuntos de datos con n = 50 y n = 500 observaciones,
 # respectivamente, ingresando como nro de identificaci´on los 5 ´ultimos n´umeros del DNI de
 # alg´un integrante del grupo y con todas las variables.
@@ -145,8 +147,7 @@ lines(x_nuevas, h50, col = "black", lwd =1.5, lty = "dashed")
 h = 2
 ksmooth(alturasdat500m$altura_madre,
         alturasdat500m$altura,
-        kernel = "box",
+        kernel = "box", # Uniforme
         x.points = 156,
         bandwidth = 2*h
 )$y
-  
