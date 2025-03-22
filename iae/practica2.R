@@ -151,3 +151,69 @@ ksmooth(alturasdat500m$altura_madre,
         x.points = 156,
         bandwidth = 2*h
 )$y
+
+#15.  Repetir la predicci´on del ´ıtem anterior pero utilizando el estimador de Nadaraya-Watson con
+# n´ucleo normal.
+
+ksmooth(alturasdat500m$altura_madre,
+        alturasdat500m$altura,
+        kernel = "normal", 
+        x.points = 156,
+        bandwidth = h # Porque ya es el SD
+)$y
+
+
+
+#16. Realizar un gr´afico de dispersi´on de las alturas de los hijos vs. las alturas de las madres y
+#superponer (con distinto color) las funciones predictoras de Nadaraya-Watson que utilizan el
+#n´ucleo normal y el uniforme, en ambos casos con ancho de ventana h = 2.
+dev.off()
+plot(x = alturasdat500m$altura_madre, 
+     y = alturasdat500m$altura)
+
+lines(ksmooth(x = alturasdat500m$altura_madre, 
+             y = alturasdat500m$altura, 
+      kernel = "box",
+      bandwidth = 2*h), col = "red", lwd = 3)
+
+lines(ksmooth(x = alturasdat500m$altura_madre, 
+              y = alturasdat500m$altura, 
+              kernel = "normal",
+              bandwidth = h), col = "blue", lwd = 3)
+
+
+## 17.Realizar la predicci´on para la altura de un hijo (var´on) de una mam´a que mide x = 156 cm
+# calculando el promedio de los k = 7 vecinos m´as cercanos.
+
+
+manualknn <- function(train, test, y, k){
+  indexes <- order(abs(train - test))[1:k]
+  mean(y[indexes])
+}
+
+pred_knn <- function(x, y, x_nuevo, k){
+  indexes <- order(abs(x - x_nuevo))[1:k]
+  mean(y[indexes])
+}
+manualknn(train = alturasdat500m$altura_madre,
+          test = 156,
+          y = alturasdat500m$altura, k = 7)
+
+
+
+
+# 18. Utilizar la funci´on knn.reg, inclu´ıda en la librer´ıa FNN de R, para predecir la altura de un hijo
+# cuya madre mide 156 cm, utilizando los k = 7 vecinos m´as cercanos. Comparar con el
+# resultado obtenido en el ´ıtem anterior
+
+#install.packages("FNN")
+library(FNN)
+
+knn.reg(train = alturasdat500m$altura_madre,
+        test = 156,
+        y = alturasdat500m$altura, k = 7, 
+        algorithm = "brute")$pred
+
+
+
+
