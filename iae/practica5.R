@@ -11,14 +11,11 @@ hongos$Indi <- (hongos$Variety - 1)*1
 # Ejercicio 3-5 (METODOS DISCRIMINATIVOS)
 classknn <- function(x,y, k, x_nuevo){
   indexes <- order(abs(x - x_nuevo))[1:k]
-  print(paste0("Prop:", mean(y[indexes])))
-  
   as.numeric(mean(y[indexes]) > 0.5)
 }
 
 clas_prop_loc <- function(x, y, h, x_nuevo){
   values <- y[abs(x - x_nuevo) <= h]
-  print(paste0("Prop:", mean(values)))
   as.numeric(mean(values) > 0.5)
 }
 
@@ -61,4 +58,36 @@ f1.aprox(x_nuevo)*p1 > f0.aprox(x_nuevo)*p1
 bayes_cutoff_p0.5 <- uniroot(function(x){f0.aprox(x) - f1.aprox(x)}, lower = 5.2, upper = 6)$root
 bayes_cutoff_p.real <- uniroot(function(x){p0*f0.aprox(x) - p1*f1.aprox(x)}, lower = 5.2, upper = 6)$root
 abline(v = bayes_cutoff_p.real, col = "darkgreen", lty = 2, lwd = 2)
-abline(v = bayes_cutoff, col = "black", lty = 1, lwd = 0.5)
+abline(v = bayes_cutoff_p0.5, col = "black", lty = 1, lwd = 0.5)
+
+
+f0 <- density(hongos$Height[hongos$Indi == 0], kernel = "gaussian", bw = bw.bcv(hongos$Height[hongos$Indi == 0]))
+f1 <- density(hongos$Height[hongos$Indi == 1], kernel = "gaussian", bw = bw.bcv(hongos$Height[hongos$Indi == 1]))
+
+
+clas_gen <- function(x, y, x_nuevo, h0, h1){
+  dens0 <- density(x[y == 0], kernel = "gaussian", bw = h0, from = x_nuevo, to = x_nuevo, n = 1)$y
+  dens1 <- density(x[y == 1], kernel = "gaussian", bw = h1, from = x_nuevo, to = x_nuevo, n = 1)$y
+  propm0 <- mean(y == 0)
+  propm1 <- mean(y == 1)
+  aux0 <- dens0*propm0
+  aux1 <- dens1*propm1
+  if(aux0 >= aux1)
+  {return(0)}else{return(1)}
+}
+
+
+loocv_ec <- function(x, y, h0, h1){
+  sumatoria <- 0
+  for (i in 1:length(x)){
+  y_pred <- clas_gen(x = x[-i], y = y[-i], x_nuevo = x[i], h0 = h0, h1 = h1)
+  sumatoria <- y_pred
+  }
+  y_pred / length(x)
+  }
+
+loocv_ec(hongos$Height,
+         hongos$Indi, 
+         h0 = bw.bcv(hongos$Height[hongos$Indi == 0]),
+         h1 = bw.bcv(hongos$Height[hongos$Indi == 1])
+         )

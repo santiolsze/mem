@@ -1,0 +1,73 @@
+---
+title: "Trabajo Práctico - Probabilidades 2025"
+author: "Iguaran, Carlos; Olszevicki, Santiago"
+output: pdf_document
+params:
+  lambda: 3.71
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Se indica a continuación el valor de lambda de la entrega 7a de uno de los integrantes: 
+```{r}
+lambda <- params$lambda
+lambda
+```
+
+1) Calcular la función de densidad de X. ¿A qué familia pertenece?
+\[
+f_X(x) =\int_x^\infty \lambda^2 e^{-\lambda y} \, dy 
+= \lambda^2 \int_x^\infty e^{-\lambda y} \, dy
+= \lambda^2 \left[ -\frac{1}{\lambda} e^{-\lambda y} \right]_x^\infty
+= \lambda^2 \left( 0 + \frac{1}{\lambda} e^{-\lambda x} \right)
+= \lambda e^{-\lambda x}
+\]
+Dicha densidad indica que la variable X tiene distribución exponencial de parámetro $\lambda$.
+\[
+\]
+
+b) Calcular la función de densidad condicional de Y | X = x. ¿A qué familia pertenece?
+
+Nota: la densidad de Y dado X=x está definida solo para \( x \ge 0 \)
+\[
+f_{Y|X=x}(y) = \frac{f_{X,Y}(x, y)}{f_X(x)} 
+= \frac{\lambda^2 e^{-\lambda y}}{\lambda e^{-\lambda x}} = \lambda e^{-\lambda(y - x)}
+\quad \text{para } y \ge x
+\]
+
+Se puede apreciar que Y es una exponencial desplazada. Es decir, $Y \mid X = x \sim W + x, \quad \text{donde } W \sim \mathrm{Exp}(\lambda)$
+
+c) Calcular E(X), E(Y), Cov(X,Y)
+- $E(X) = \frac{1}{\lambda} = {`r 1/params$lambda`}$, dado que \( X \sim \mathrm{Exp}({`r params$lambda`}) \)
+
+- $E(Y) = [Integral] = \frac{2}{\lambda} = {`r 2/params$lambda`}$ Ver bien cómo se resueve esta integral
+
+- $E(X,Y) = [Integral] = \frac{3}{\lambda^2}= {`r 2/params$lambda^2`}$ 
+- $Cov(X,Y) = E(X,Y) - E(X).E(Y) =\frac{1}{\lambda^2}= {`r 1/params$lambda^2`}$
+
+\[
+\]
+d) Calcular la función de distribución acumulada de Y | X = x, para x >= 0.
+$$P(Y \le y \mid X = x) = P(W \le y - x) = 1 - e^{-\lambda (y - x)} $$
+Nota para nosotros: Si quisieramos agregar la integral, lo hacemos
+\[ \]
+e) Simular una muestra de tamaño 100 de la variable Y | X = 1 a partir de una Uniforme en (0, 1). Para ello, realizar y mostrar los cálculos correspondientes.
+\[ \]
+
+```{r}
+simulate_y_cond_x <- function(n, lambda = lambda){
+u = runif(n, 0, 1) # Para usar de random generator
+ws <- -log(u) / lambda # Exponenciales de parametro lambda (w1...wn ~ W(lambda))
+ys <- ws+1   # Exponencial desplazada Y = W + 1
+ys
+}
+muestra <- simulate_y_cond_x(100, lambda = params$lambda)
+muestra[1:5]
+```
+
+f) Implementar una función generar_pares que tenga por parámetro a n, donde n denota la cantidad
+de datos a generar, y devuelva una matriz con un par generado con la distribución de (X, Y ) en
+cada fila.
+
+g) Generar n = 2000 datos y estimar con ellos E(X), E(Y ), Cov(X, Y ). ¿Qué se observa?
