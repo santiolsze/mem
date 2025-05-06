@@ -302,10 +302,10 @@ pred_knn$pred # Obtener la predicción
 # =============================================================================
 
 # Calcular Mean Squared Error (MSE)
-# MSE = mean((valores_reales - valores_predichos)^2) #
+MSE = mean((valores_reales - valores_predichos)^2) #
 
 # Calcular Sum of Squared Errors (SSE) o Residual Sum of Squares (RSS)
-# SSE/RSS = sum((valores_reales - valores_predichos)^2) #
+SSE/RSS = sum((valores_reales - valores_predichos)^2) #
 
 # Leave-One-Out Cross-Validation (LOOCV)
 # Implementación manual de la función loocv_pred_prom_loc se encuentra arriba.
@@ -315,34 +315,34 @@ pred_knn$pred # Obtener la predicción
 
 # Búsqueda en grilla (Grid Search) para seleccionar hiperparámetros
 # Definir una grilla de valores para el/los hiperparámetro(s)
-# grilla_h <- seq(inicio, fin, by = paso) #
+grilla_h <- seq(inicio, fin, by = paso) #
 # Crear una estructura (vector o matriz) para almacenar los resultados de la evaluación
-# resultados_cv <- c() # Vector
-# resultados_cv_matriz <- matrix(nrow = n_h0, ncol = n_h1) # Matriz para 2 parámetros
+resultados_cv <- c() # Vector
+resultados_cv_matriz <- matrix(nrow = n_h0, ncol = n_h1) # Matriz para 2 parámetros
 # Iterar sobre los valores de la grilla, entrenar/evaluar el modelo y guardar el resultado
-# for(h in grilla_h) {
-#   resultados_cv[i] <- funcion_evaluacion(..., h)
-# } #
+ for(h in grilla_h) {
+   resultados_cv[i] <- funcion_evaluacion(..., h)
+ } #
 
 # Encontrar el/los hiperparámetro(s) que minimizan el error de evaluación
-# min(resultados_cv) # Valor mínimo del error
-# which(resultados_cv == min(resultados_cv), arr.ind = TRUE) # Indices del mínimo en matriz
-# h_optimo <- grilla_h[order(resultados_cv)] # Valor del hiperparámetro óptimo
+min(resultados_cv) # Valor mínimo del error
+which(resultados_cv == min(resultados_cv), arr.ind = TRUE) # Indices del mínimo en matriz
+h_optimo <- grilla_h[order(resultados_cv)] # Valor del hiperparámetro óptimo
 
 # =============================================================================
 # --- Sección: Modelos de Árboles (Basado en Fuente 7) ---
 # =============================================================================
 
 # Cargar paquete 'tree'
-# library(tree) #
+library(tree) #
 # El paquete ISLR2 es útil por sus conjuntos de datos, incluyendo Boston.
-# library(ISLR2) #
+library(ISLR2) #
 
 # Dividir datos en conjuntos de entrenamiento y test (ejemplo 50/50)
-# n_total <- nrow(dataframe) #
-# indices_entrenamiento <- sample(1:n_total, n_total / 2) #
-# datos_entrenamiento <- dataframe[indices_entrenamiento, ]
-# datos_test <- dataframe[-indices_entrenamiento, ] #
+n_total <- nrow(dataframe) #
+indices_entrenamiento <- sample(1:n_total, n_total / 2) #
+datos_entrenamiento <- dataframe[indices_entrenamiento, ]
+datos_test <- dataframe[-indices_entrenamiento, ] #
 
 # Entrenar un modelo de árbol (regresión o clasificación)
 # tree(): Función principal para ajustar árboles
@@ -354,44 +354,42 @@ pred_knn$pred # Obtener la predicción
 # mindev: Mínima reducción de la desviación (error) requerida para hacer una división (defecto=0.01)
 
 # Ejemplo de ajuste de un árbol de regresión
-# arbol_regresion <- tree(medv ~ ., data = Boston, subset = indices_entrenamiento) #
+arbol_regresion <- tree(medv ~ ., data = Boston, subset = indices_entrenamiento) #
 
 # Ver un resumen del árbol ajustado
-# summary(arbol_regresion) # Muestra variables usadas, nodos terminales, error en entrenamiento
+summary(arbol_regresion) # Muestra variables usadas, nodos terminales, error en entrenamiento
 
 # Obtener el RSS (Residual Sum of Squares) del árbol en entrenamiento
-# rss <- summary(arbol_regresion)$dev #
+rss <- summary(arbol_regresion)$dev #
 
 # Visualizar el árbol
-# plot(arbol_regresion) # Dibuja la estructura del árbol
-# text(arbol_regresion, cex = 0.7) # Añade etiquetas a los nodos (reglas de división, predicciones)
+plot(arbol_regresion) # Dibuja la estructura del árbol
+text(arbol_regresion, cex = 0.7) # Añade etiquetas a los nodos (reglas de división, predicciones)
 
 # Hacer predicciones con un árbol ajustado
-# predict(arbol_ajustado, newdata = nuevos_datos) #
+predict(arbol_ajustado, newdata = nuevos_datos) #
 # Para predecir en los datos de entrenamiento: predict(arbol_ajustado, newdata = datos_entrenamiento) #
 # Para predecir en los datos de test: predict(arbol_ajustado, newdata = datos_test) #
 
 # Evaluar el rendimiento del árbol
-# MSE en test: mean((datos_test$respuesta - predicciones_test)^2) #
-# MSE en entrenamiento: mean((datos_entrenamiento$respuesta - predicciones_entrenamiento)^2) #
+mean((datos_test$respuesta - predicciones_test)^2) # MSE en test: 
+mean((datos_entrenamiento$respuesta - predicciones_entrenamiento)^2) ## MSE en entrenamiento:
 
 # Podar el árbol usando Cross-Validation
 # cv.tree(): Realiza cross-validation para determinar el mejor tamaño de árbol
 # arbol_ajustado: El árbol a podar
 # K: Número de folds para CV (ej: K=10)
-# cv_resultado <- cv.tree(arbol_regresion, K = 10) #
+cv_resultado <- cv.tree(arbol_regresion, K = 10) #
 
 # Ver resultados de CV (tamaño del árbol, desviación/error, parámetro de complejidad k)
-# cv_resultado #
-# plot(cv_resultado$size, cv_resultado$dev, type = "b") # Graficar error vs tamaño del árbol
+ cv_resultado #
+ plot(cv_resultado$size, cv_resultado$dev, type = "b") # Graficar error vs tamaño del árbol
 # El tamaño con menor error es el "mejor"
 
 # Podar el árbol al tamaño óptimo
 # prune.tree(): Poda un árbol
 # arbol_ajustado: El árbol a podar
 # best: Número de nodos terminales deseado para el árbol podado
-# arbol_podado <- prune.tree(arbol_regresion, best = tamaño_optimo) #
-# plot(arbol_podado) # Visualizar árbol podado
-# text(arbol_podado, cex=0.7)
-
-# Fin del script recopilatorio
+arbol_podado <- prune.tree(arbol_regresion, best = tamaño_optimo) #
+plot(arbol_podado) # Visualizar árbol podado
+text(arbol_podado, cex=0.7)
