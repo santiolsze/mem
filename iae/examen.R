@@ -27,7 +27,7 @@ y_1 <- mean(y[x >= (x_nueva - h/2) & x <= (x_nueva + h/2)])
 y_2 <- mean(
   y[
     ((x >= (x_nueva - h)) & (x < (x_nueva -h/2))) | 
-      (x > (x_nueva + h/2) & x <= (x_nueva +h))]
+ (x > (x_nueva + h/2) & x <= (x_nueva +h))]
 )
 pred <- (2/3)*y_1 + (1/3)*y_2
 print(pred)
@@ -41,9 +41,9 @@ pred_PromPes_loc <- function(x, y, x_nueva, h){
         (x > (x_nueva + h/2) & x <= (x_nueva +h))]
   )
   
-  
-  pred <- (2/3)*y_1 + (1/3)*y_2
-  
+
+    pred <- (2/3)*y_1 + (1/3)*y_2
+    
   pred
 }
 
@@ -57,7 +57,7 @@ xs <- seq(-22, -8, 0.5)
 preds <- c()
 for (x_nueva in xs){
   preds <- c(preds, pred_PromPes_loc(x = train$BjMAG, y = train$Rmag, x_nueva = x_nueva, h = 1.2)
-  )
+ )
 }
 
 plot(train$BjMAG, train$Rmag)
@@ -88,7 +88,7 @@ text(arbol_podado, cex = .5)
 
 ## d) ---------------------------------------
 predict(arbol_podado,data.frame(BjMAG = c(-17.65)))
-# 24.38805
+# 24.39
 
 # Graficamente también se aprecia.  
 
@@ -96,9 +96,9 @@ predict(arbol_podado,data.frame(BjMAG = c(-17.65)))
 prom_preds <- c()
 for (x_nueva in test$BjMAG){
   prom_preds <- c(prom_preds, pred_PromPes_loc(x = train$BjMAG,
-                                               y = train$Rmag,
-                                               x_nueva = x_nueva,
-                                               h = 1.2))
+                   y = train$Rmag,
+                   x_nueva = x_nueva,
+                   h = 1.2))
 }
 
 test$pred_promedios <- prom_preds
