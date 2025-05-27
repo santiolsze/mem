@@ -124,3 +124,5 @@ titanic %>% group_by(pclass) %>% summarise(min = min(age_num, na.rm = T),
                                            n = n(),
                                            n_unique = length(unique(age_num))
 )
+
+median(airquality[airquality$Month == 5 & airquality$Ozone < 100,]$Ozone, na.rm = T)

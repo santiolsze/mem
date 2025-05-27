@@ -1,0 +1,52 @@
+---
+title: 'Clase 2: Entrega 2'
+author: "Santiago Olszevicki"
+date: "2025-05-19"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Según las notas de estadística de Boente-Yohai, 
+Indiquemos por $\bar{X} = \frac{1}{n} \sum_{i=1}^n X_i$ y por $\hat{\sigma}^2 = \frac{1}{n} \sum_{i=1}^n (X_i - \bar{X})^2$. Entonces, despejando del sistema de momentos, los estimadores de los momentos para $\lambda$ y $\alpha$ resultan ser:
+
+\[
+\hat{\lambda} = \delta_1(X_1, \ldots, X_n) = \frac{\bar{X}}{\hat{\sigma}^2}, \qquad
+\hat{\alpha} = \delta_2(X_1, \ldots, X_n) = \frac{\bar{X}^2}{\hat{\sigma}^2}.
+\]
+
+
+
+
+Calcular el estimador de momentos de 𝛼
+```{r}
+datos<- scan()
+n <- length(datos)
+```
+
+
+# Item a y b
+```{r}
+alpha_momentos <- mean(datos**2) / (((n+1)/n) * var(datos))
+```
+
+# Item c
+
+```{r, fig.width=4, fig.height=3}
+
+```
+
+# Item d: ECM empirico
+```{r}
+
+```
+Item e: ECM teórico.
+
+```{r} 
+
+
+```
