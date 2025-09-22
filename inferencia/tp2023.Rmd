@@ -1,0 +1,174 @@
+---
+title: "TP (2023)"
+author: "Olszevicki Santiago"
+output: pdf_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(purrr)
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(ggplot2)
+```
+
+Sea $\mathbf{X}=X_1, \dots, X_n$ una muestra aleatoria i.i.d donde $X_i \overset{\text{}}{\sim} Exp(\lambda)$.  
+Se desean construir tests de hipótesis para el parámetro de la distribución. Se denominará $\delta_{1}(\mathbf{X})$ al exacto y   $\delta_{2}(\mathbf{X})$ al basado en la aproximación asintótica. Las hipótesis son:
+
+\[
+H_0: \lambda \leq \lambda_{0} \quad \text{vs} \quad H_1: \lambda >\lambda_{0}
+\]
+considerando un valor de $\lambda_{0}  = 0.5$
+
+La función de verosimilitud de la muestra aleatoria es:
+$$
+L(\lambda; \mathbf{X}) = \prod_{i=1}^n \lambda\, e^{-\lambda X_i} = \lambda^n \exp\left( -\lambda \sum_{i=1}^n X_i \right)I_{0 \leq x \leq \infty}
+$$
+Definiendo a $c(\theta) = \theta$ (creciente) y $r(\mathbf{X}) = -\sum_{i=1}^n X_i$, y dadas las hipótesis, el test a plantear surge de la estructura básica  
+\[
+\delta_{j}(\mathbf{X}) = 
+\begin{cases}
+1 & \text{si } -\sum_{i=1}^n X_i > \kappa_{\alpha} \\[6pt]
+0 & \text{si no}
+\end{cases}
+\]
+
+Sabemos que la suma de variables aleatorias independientes e idénticamente distribuidas con distribución exponencial $Exp(\lambda)$ tiene distribución Gamma:
+
+$\sum_{i=1}^n X_i \sim \Gamma(n, \lambda)$
+
+ 
+Además, por propiedades de la distribución Gamma: $2\lambda \sum_{i=1}^n X_i \sim \text{Gamma}(n, 1/2)$, que equivale a  $\chi^2_{2n}$, es decir, sigue una distribución chi-cuadrado con $2n$ grados de libertad. Bajo la hipótesis nula (y en particular, en su condición de igualdad a $\lambda = \lambda_{0}$), $2\lambda_{0} \sum_{i=1}^n X_i \sim \chi^2_{2n}$. De esta manera, queda planteado el test basado en la distribución exacta como:
+
+\[
+\delta_{1}(\mathbf{X}) = 
+\begin{cases}
+1 & \text{si } 2\lambda_{0} \sum_{i=1}^n X_i < \chi^2_{2n, \alpha} \\[6pt]
+0 & \text{si no}
+\end{cases}
+\]
+donde el cambio de signo se debe a multiplicar a ambos lados de la desigualdad por -1 para obtener $\sum_{i=1}^n X_i$ a izquierda. Luego, el planteo de $\delta_{1}(\mathbf{X})$ solo implica multiplicar a ambos lados por $2\lambda_{0}$
+
+Por otra parte, se sabe que
+
+\[
+\sqrt{n} \frac{\overline{X} - E(X_i)}{\sqrt{\mathrm{Var}(X_i)}} \xrightarrow{d} \mathcal{N}(0,1)
+\]
+
+por el Teorema Central del Límite, para \(n\) suficientemente grande y variables aleatorias \(X_i\) i.i.d.
+
+En el caso de las variables exponenciales, se tiene que \(E(X_i) = \frac{1}{\lambda}\) y \(\mathrm{Var}(X_i) = \frac{1}{\lambda^2}\). Por lo tanto, se puede reescribir como $\sqrt{n} \lambda (\overline{X} - \tfrac{1}{\lambda}) \xrightarrow{D} \mathcal{N}(0,1)$. Bajo la hipótesis nula \(H_0: \lambda = \lambda_0 = 0.5\), la estadística se expresa como
+\[
+\sqrt{n} \lambda_0 \left(\overline{X} - \frac{1}{\lambda_0}\right) = \frac{\sqrt{n}(\overline{X} - 2)}{2}  \approx \mathcal{N}(0,1).
+\]
+
+
+Así, se puede plantear una segunda regla de decisión de nivel asintótico, definida como:
+
+\[
+\delta_2(\mathbf{X}) =
+\begin{cases}
+1, & \text{si } \dfrac{\sqrt{n}}{2}(\overline{X} - 2) < z_{\alpha} \\[6pt]
+0, & \text{en otro caso}
+\end{cases}
+\]
+A continuación, se plantean las simulaciones a fin de evaluar sus niveles empíricos.
+
+
+```{r}
+set.seed(11)
+Nrep <- 10000 
+n_muestra <-c(10, 30, 100, 1000)
+nivel <- 0.05
+
+test_exacto <- function(datos, lambda0, nivel = nivel){
+  n <- length(datos)
+  2*lambda0*sum(datos) < qchisq(nivel, df = 2*n)
+}
+
+test_asintotico <- function(datos, lambda0, nivel = nivel){
+  n <- length(datos)
+  sqrt(n)*(mean(datos)-1/lambda0)*lambda0 < qnorm(nivel)
+}
+
+nivel_empirico <- function(n, lambda0, test, nivel = nivel){
+mean(replicate(Nrep, test(datos = rexp(n, rate = lambda0),
+                          lambda0 = lambda0, nivel = nivel))
+)
+  }
+
+potencia_empirica <- function(n, lambda0, lambda, test, nivel = nivel){
+  mean(replicate(Nrep, test(datos = rexp(n, rate = lambda), lambda0 = lambda0, nivel = nivel)))
+}
+
+nivel_empirico(n = 10, lambda0 = 0.5, test = test_asintotico, nivel = nivel)
+
+```
+
+
+```{r}
+tests <- list(
+   exacto = test_exacto,
+  asintotico = test_asintotico
+ 
+)
+
+# Ejecutar nivel_empirico para cada combinación 
+resultados <- map_dfr(n_muestra, function(n) {
+  map_dfr(names(tests), function(nombre_test) {
+    tibble(
+      n = n,
+      test = nombre_test,
+      nivel = nivel_empirico(n = n, lambda0 = 0.5, test = tests[[nombre_test]], nivel = nivel)
+    )
+  })
+}) %>%
+  pivot_wider(names_from = test, values_from = nivel)
+```
+```{r echo=FALSE}
+
+kable(resultados, digits = 3, caption = "Nivel empírico")
+
+```
+
+```{r}
+n_grid <- c(10, 30, 100, 1000)
+lambda_grid <- seq(.1, .9, .05)
+param_grid <- expand.grid(n = n_grid, lambda = lambda_grid)
+
+resultados_potencia <- param_grid %>%
+  mutate(
+    exacto = map2_dbl(n, lambda, ~potencia_empirica(n = .x, lambda0 = 0.5, lambda = .y, test = test_exacto, nivel = nivel)),
+    asintotico = map2_dbl(n, lambda, ~potencia_empirica(n = .x, lambda0 = 0.5, lambda = .y, test = test_asintotico, nivel = nivel)),
+    dif = asintotico - exacto
+  )  
+```
+```{r}
+resultados_long <- resultados_potencia %>%
+  pivot_longer(
+    cols = c('exacto', 'asintotico'),
+    names_to = 'test',
+    values_to = 'potencia'
+  )
+
+```
+
+```{r}
+ggplot(resultados_long, aes(x = lambda, y = potencia, 
+                            color = test, linetype = as.factor(n))) +
+  geom_line(linewidth = .5) +
+  scale_color_manual(values = c("asintotico" = "#D53E25","exacto" = "#0012B2"),
+                     labels = c("Asintótico","Exacto"),
+                     name = "Test") +
+  scale_linetype_discrete(name = "n") +
+  labs(
+    title = "Potencia empírica de ambos tests según n y lambda",
+    y = "Potencia",
+    x = expression(lambda)
+  ) +
+  geom_hline(yintercept = nivel, linetype = "dashed", color = "grey40", linewidth = 0.8) + 
+  theme_minimal(base_size = 14) 
+```
+
+### Conclusiones
+A partir de los resultados del nivel empírico, resulta destacable que el test asintótico exhibe un nivel empírico inferior al teórico cuando se emplean tamaños muestrales reducidos. Esto implica, por definición, que la probabilidad de rechazar la hipótesis nula siendo ésta verdadera es inferior a la deseada. En otras palabras, según este criterio, el test asintótico parecería ser "más conservador" para un tamaño de muestra determinado. Esta discrepancia se atenúa a medida que el tamaño muestral aumenta, convergiendo hacia el nivel deseado. En el caso del test exacto, el nivel empírico se mantiene próximo al teórico, sin aparente dependencia del tamaño muestral ($n$). Dado que no se recurre a aproximaciones y se utiliza la distribución exacta para derivar el test, este resultado es el esperado. Sin embargo, en el análisis de potencia, se observa que para tamaños muestrales pequeños, donde la aproximación asintótica no es válida, la diferencia de potencia es notable para todos los valores del parámetro de la distribución considerados. Para tamaños muestrales grandes $n \geq 100$, la diferencia se vuelve prácticamente imperceptible, pudiendo considerarse tests equivalentes en términos de su potencia y nivel empíricos.

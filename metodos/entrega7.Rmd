@@ -1,0 +1,71 @@
+---
+title: "Entrega 7"
+author: "Santiago Olszevicki"
+date: "2025-07-19"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+datos <- read.csv("/home/santiago/Downloads/datos_practica_7.tsv", sep = "\t")
+n <- nrow(datos)
+```
+
+## a) Estimadores de máxima verosimilitud
+
+Los estimadores de máxima verosimilitud (EMV) para el vector de medias \( \boldsymbol{\mu} \) y la matriz de covarianzas \( \boldsymbol{\Sigma} \) son:
+
+\[
+\hat{\boldsymbol{\mu}} = \frac{1}{n} \sum_{i=1}^n \mathbf{Z}_i
+\qquad \text{y} \qquad
+\hat{\boldsymbol{\Sigma}} = \frac{1}{n} \sum_{i=1}^n (\mathbf{Z}_i - \hat{\boldsymbol{\mu}})(\mathbf{Z}_i - \hat{\boldsymbol{\mu}})^T
+\]
+
+```{r}
+u_mv <- colMeans(datos)
+u_mv
+```
+
+```{r}
+sigma_mv <- cov(datos) * (nrow(datos) - 1) / nrow(datos) # Por default usa el estimador insesgado
+sigma_mv
+```
+
+## b) Autovalores y autovectores
+La matriz de varianzas y covarianzas es siempre simétrica, por definición, y las matrices simétricas son siempre diagonalizables.
+
+```{r}
+eig <- eigen(sigma_mv)
+autovalores <- eig$values
+autovectores <- eig$vectors
+print(autovalores)
+print(autovectores)
+```
+
+## c) Esperanza y matriz de covarianzas de los datos transformados
+
+```{r}
+Lambda_sqrt <- diag(sqrt(autovalores))
+R_hat <- autovectores %*% Lambda_sqrt %*% t(autovectores)
+R_inv <- solve(R_hat)
+
+Z_centrada <- sweep(as.matrix(datos), 2, u_mv)
+datos_transf <- t(R_inv %*% t(Z_centrada))
+
+esperanza <- colMeans(datos_transf)
+covs <- cov(datos_transf)
+
+print(esperanza)
+print(covs)
+
+```
+Como es de esperar, más allá de diferencias numéricas, el vector de esperanzas es (0,0) y la matriz de varianzas y covarianzas, la identidad.
+
+## d) Estimar R
+```{r}
+R_hat
+```
+

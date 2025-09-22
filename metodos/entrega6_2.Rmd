@@ -1,0 +1,150 @@
+---
+title: "Entrega 6.2"
+author: "Olszevicki Santiago"
+output: pdf_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(knitr)
+library(kableExtra)
+library(dplyr)
+library(MASS)
+
+```
+
+#### Consigna
+Construir una tabla con los niveles de cubrimiento empríco de los intervalos para la mediana obtenidos por los cuatro métodos propuestos y para tres tamaños muestrales: n = 8, 30, 100.
+
+```{r}
+x<-scan(text = "3.8 4.9 3.0 3.2 3.1 4.0 5 4.5 7.5 5.4 4.5 3.8 6.8 5.3 4.2
+4.9 5 3.4 4.2 6.4 5.1 4.9 4.3 6.3 3.7 4.3 4 5.3 4.7 3.5")
+n <- length(x)
+nivel <- 0.95
+x
+```
+
+```{r}
+int_mediana_bootu <- function(x, nivel, B = 1000){
+n <- length(x)
+ests <- numeric(B)
+for(i in 1:B){
+xboot <- sample(x, n, replace = TRUE)
+ests[i] <- median(xboot)
+}
+ic.min <- quantile(ests, (1-nivel)/2)
+ic.max <- quantile(ests, 1-(1-nivel)/2)
+c(ic.min, ic.max)
+}
+int_mediana_bootu(x, nivel)
+```
+
+```{r}
+int_mediana_bootp <- function(x, nivel, B = 1000){
+dens <- fitdistr(x, densfun = "gamma")
+n <- length(x)
+ests <- numeric(B)
+for(i in 1:B){
+xbootp <- rgamma(n = n, shape = dens$estimate["shape"], rate = dens$estimate["rate"])
+ests[i] <- median(xbootp)
+}
+ic.min <- quantile(ests, (1-nivel)/2)
+ic.max <- quantile(ests, 1-(1-nivel)/2)
+c(ic.min, ic.max)
+}
+int_mediana_bootp(x, nivel)
+```
+
+```{r}
+int_mediana_teonp <- function(x, nivel){
+  n <- length(x)
+  mediana_muestral <- median(x)
+  
+  densidad <- density(x)
+  f_interp <- splinefun(densidad$x, densidad$y)
+  f_mediana <- f_interp(mediana_muestral)
+  
+  z <- qnorm(1 - (1-nivel)/2)
+  
+  error <- z / (2 * f_mediana * sqrt(n))
+  
+  c(mediana_muestral - error, mediana_muestral + error)
+}
+int_mediana_teonp(x, nivel)
+
+```
+
+```{r}
+int_mediana_teop <- function(x, nivel){
+  n <- length(x)
+  
+  dens <- fitdistr(x, "gamma")
+  shape <- dens$estimate["shape"]
+  rate <- dens$estimate["rate"]
+  
+  mediana_muestral <- median(x)
+  densidad <- dgamma(mediana_muestral, shape = shape, rate = rate)
+  
+  z <- qnorm(1 - (1 - nivel) / 2)
+  
+  error <- z / (2 * densidad * sqrt(n))
+  
+  c(mediana_muestral - error, mediana_muestral + error)
+}
+
+int_mediana_teop(x, nivel)
+
+```
+
+```{r}
+cubre <- function(ic, valor_verdadero) {
+  valor_verdadero >= ic[1] & valor_verdadero <= ic[2]
+}
+```
+
+```{r}
+ns <- c(8, 30, 100)
+R <- 1000
+mediana_verdadera <- qgamma(0.5, shape = 20, rate = 4)
+
+
+resultados <- data.frame(
+  n = integer(),
+  metodo = character(),
+  cobertura = numeric()
+)
+
+```
+
+```{r}
+
+for (n in ns) {
+  set.seed(11) 
+
+  cub_teonp <- cub_teop <- cub_bootu <- cub_bootp <- numeric(R)
+
+  for (r in 1:R) {
+    x <- rgamma(n, shape = 20, rate = 4)
+
+    cub_teonp[r] <- cubre(int_mediana_teonp(x, nivel), mediana_verdadera)
+    cub_teop[r]  <- cubre(int_mediana_teop(x, nivel), mediana_verdadera)
+    cub_bootu[r] <- cubre(int_mediana_bootu(x, nivel), mediana_verdadera)
+    cub_bootp[r] <- cubre(int_mediana_bootp(x, nivel), mediana_verdadera)
+  }
+
+  resultados <- rbind(resultados,
+    data.frame(n = n, metodo = "teo_np",   cobertura = mean(cub_teonp)),
+    data.frame(n = n, metodo = "teo_p",    cobertura = mean(cub_teop)),
+    data.frame(n = n, metodo = "boot_np",  cobertura = mean(cub_bootu)),
+    data.frame(n = n, metodo = "boot_p",   cobertura = mean(cub_bootp))
+  )
+}
+```
+
+
+```{r}
+resultados %>%
+  tidyr::pivot_wider(names_from = metodo, values_from = cobertura) %>%
+  kable(digits = 3, caption = "Cubrimientos empíricos") %>%
+  kable_styling(full_width = FALSE, position = "center")
+```
+
