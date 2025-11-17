@@ -59,7 +59,7 @@ b2 <- coefs["varie2"]
 b3 <- coefs["varie3"]
 b4 <- coefs["varie4"]
 ggplot(data = vinos, aes(x = tiempo, y = precio, colour = varie)) +
-  geom_point(size = 1e-1) + 
+  geom_point(size = 1) + geom_smooth(method = "lm") +
   geom_abline(intercept = b0, slope = b1, color = "red") +
   geom_abline(intercept = b0 + b2, slope = b1, color = "darkgreen") +
   geom_abline(intercept = b0 + b3, slope = b1, color = "darkblue") +

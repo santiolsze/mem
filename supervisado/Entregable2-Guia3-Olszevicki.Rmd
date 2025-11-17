@@ -1,0 +1,134 @@
+---
+title: "Ejercicio Entregable 2 (Guía 3)"
+author: "Olszevicki, Santiago"
+output: pdf_document
+params:
+  lambda: 3.71
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tibble)
+library(dplyr)
+library(ggplot2)
+library(leaps)
+library(glmnet)
+```
+Parámetros / Valores definidos
+```{r}
+set.seed(11)
+media  = 0
+desvio = 2
+n = 100
+b0 = 1; b1 = 3; b2 = -1; b3 = 0.5; b7 = -3
+errors <- runif(n, -2*desvio, 2*desvio)
+```
+
+1. Utilice la función rnorm() para generar n = 100 predictores X de tamaño p = 1
+2. Genere n = 100 respuestas Y de acuerdo con el modelo propuestos
+
+```{r}
+X <- rnorm(n, media, desvio)
+Y <- b0 + b1*X + b2*X^2 + b3*X^3 + errors
+Y2 <-  b0 + b7*X^7 + errors
+  
+Xs <- tibble(
+  X1  = X,
+  X2  = X^2,
+  X3  = X^3,
+  X4  = X^4,
+  X5  = X^5,
+  X6  = X^6,
+  X7  = X^7,
+  X8  = X^8,
+  X9  = X^9,
+  X10 = X^10
+)
+
+datos <- data.frame(Xs, Y = Y)
+datos2 <- data.frame(Xs, Y = Y2)
+```
+
+```{r}
+coef_to_formula <- function(coefs) {
+    terms <- names(coefs)
+    vals  <- as.numeric(coefs)
+    
+    pieces <- c()
+    for (i in seq_along(vals)) {
+        if (terms[i] == "(Intercept)") {
+            pieces <- c(pieces, sprintf("%.3f", vals[i]))
+        } else {
+            sign <- ifelse(vals[i] >= 0, "+", "-")
+            pieces <- c(pieces, sprintf(" %s %.3f*%s", sign, abs(vals[i]), terms[i]))
+        }
+    }
+    paste(pieces, collapse = "")
+}
+
+regsubsets.results <- function(data, method){
+  
+  models <- regsubsets(Y ~ ., data = data, method = method, nvmax = 10)
+  sum.models <- summary(models)
+  
+  tibble(
+    n       = seq_along(sum.models$bic),
+    bic     = sum.models$bic,
+    formula = unlist(
+        lapply(seq_along(sum.models$bic),
+               function(i) coef_to_formula(coef(models, i)))
+    ),
+    method  = method
+  )
+}
+
+res_exh <- regsubsets.results(datos, "exhaustive")
+res_fwd <- regsubsets.results(datos, "forward")
+res_seq <- regsubsets.results(datos, "backward")
+
+res_all <- bind_rows(res_exh, res_fwd, res_seq)
+
+ggplot(res_all, aes(x = n, y = bic, color = method)) +
+  geom_line(linewidth = 1) +
+  geom_point() +
+  theme_minimal()
+
+res_all %>%
+  group_by(method) %>%
+  slice_min(bic, n = 1) %>%
+  ungroup() %>% arrange(bic) %>% 
+  select(method, formula)
+```
+
+Todos los resultados: Dx
+```{r}
+print(res_all,n=30)
+```
+
+
+Ajustar Lasso y por CV tener el mejor lambda
+```{r}
+lasso <- cv.glmnet(as.matrix(Xs), Y, alpha = 1)
+
+lasso.coef <- predict(lasso , type = "coefficients",
+                      s = lasso$lambda.min)
+lasso.coef
+```
+
+Repetición de resultados, con otro modelo. 
+```{r}
+res_exh <- regsubsets.results(datos2, "exhaustive")
+res_exh %>% slice_min(bic, n = 1) %>%
+  ungroup() %>% arrange(bic) %>% 
+  select(method, formula)
+```
+
+Lasso
+```{r}
+lasso <- cv.glmnet(as.matrix(Xs), Y2, alpha = 1)
+
+lasso.coef <- predict(lasso , type = "coefficients",
+                      s = lasso$lambda.min)
+lasso.coef
+```
+

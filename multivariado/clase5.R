@@ -29,7 +29,8 @@ ccXY <- cc(X,Y)
 us <- ccXY$scores$corr.X.xscores
 vs <- ccXY$scores$corr.X.yscores
 
-us
-vs
+cor(X, ccXY$scores$xscores)
 
 plt.cc(ccXY)
+
+cor(ccXY$scores$xscores[,1], ccXY$scores$yscores[,1])

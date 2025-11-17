@@ -1,6 +1,6 @@
 library(GGally)
 data <- read.csv("https://stats.idre.ucla.edu/stat/data/mmreg.csv")
-data <- scale(data, center = T, scale = F)
+data <- scale(data, center = T, scale = T)
 colnames(data)
 
 x_cols <- c("locus_of_control","self_concept","motivation")
@@ -23,7 +23,21 @@ monstruo_y <- solve(S22) %*% S21  %*% solve(S11)  %*% S12
 
 eigen_decomp_x <- eigen(monstruo_x)
 eigen_decomp_y <- eigen(monstruo_y)
-rhos_hat <- sqrt(eigen_decomp$values)
+rhos_hat <- sqrt(eigen_decomp_x$values)
 
 cor(data)[x_cols, y_cols]
 
+cca <- cc(X,Y)
+cca$scores$xscores
+
+cor(cca$xcoef,eigen_decomp_x$vectors)
+
+eigen_decomp_x$vectors %*% t(eigen_decomp_x$vectors)
+
+V <- eigen_decomp_x$vectors
+
+D <- t(V) %*% S11 %*% V
+C <- diag(1/sqrt(diag(D)))
+
+A <- V %*% C
+round(t(A)  %*% A)

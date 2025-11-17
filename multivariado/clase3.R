@@ -24,3 +24,5 @@ head(scaled.data)
 head(pca$x %*% t(pca$rotation)
 )
 
+
+pca$x
