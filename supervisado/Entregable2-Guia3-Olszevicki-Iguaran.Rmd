@@ -1,0 +1,285 @@
+---
+title: "entregable3"
+output: html_document
+date: "2025-11-13"
+---
+
+```{r}
+set.seed(123)
+```
+
+```{r setup, include=FALSE}
+library(gridExtra)
+library(leaps)
+library(tidyverse)
+```
+
+# Modelo generativo cúbico
+
+```{r}
+n <- 100
+predictores <- rnorm(n)
+b_0 <- 10
+b_1 <- 20
+b_2 <- 50
+b_3 <- 30
+epsilons <- rnorm(n, mean = 0, sd = 0.5)
+mus <- b_0 + b_1 * predictores + b_2 * (predictores **2) + b_3 * (predictores **3) 
+ys <- mus + epsilons
+
+as_df <- data.frame(x=predictores,
+                    y=ys)
+```
+```{r}
+plot(as_df)
+```
+
+
+```{r}
+analisis_completo <- function(as_df, lambda_grid, usar_poly=FALSE) {
+  for (exponent in 2:10) {
+  as_df[paste("x", exponent, sep="_")] <- (as_df$x)**exponent
+  }
+  if (usar_poly) {
+    design_matrix <- poly(as_df$x, 10)  
+  } else{
+    design_matrix <- as.matrix(as_df %>% select(!y))  
+  }
+  
+  
+  
+  # busqueda exhaustiva
+  result_exhaustive <- leaps:::regsubsets(x=design_matrix, 
+                                          y=as_df$y,
+                                          intercept = TRUE,
+                                          method = "exhaustive",
+                                          nvmax = 10,
+                                          all.best=TRUE)
+
+  result_exhaustive_summary <- summary(result_exhaustive)
+
+  df_exhaustivo <- data.frame(bic=result_exhaustive_summary$bic,
+                              vars=1:length(result_exhaustive_summary$bic))
+  
+  result_forward <- leaps:::regsubsets(x=design_matrix,
+                                       y=as_df$y,
+                                       intercept = TRUE,
+                                       nvmax = 10,
+                                       method="forward")
+  
+  result_forward_summary <- summary(result_forward)
+
+  result_backward <- leaps:::regsubsets(x=design_matrix,
+                                        y=as_df$y,
+                                        intercept = TRUE, 
+                                        nvmax = 10,
+                                        method="backward")
+  
+  result_backward_summary <- summary(result_backward)
+
+  df_forward_backward <- data.frame(bic_forward=result_forward_summary$bic,
+                                    bic_backward=result_backward_summary$bic,
+                                    vars=1:length(result_forward_summary$bic))
+  
+             
+  # 
+  resultado_lasso_cv <- glmnet::cv.glmnet(design_matrix,
+                                          y=as_df$y,
+                                          alpha = 1)
+
+  resultado_lasso_cv_2 <- glmnet::cv.glmnet(design_matrix, 
+                                            y=as_df$y,
+                                            alpha = 1,
+                                             lambda = lambda_grid)
+
+
+  list(result_exhaustive_summary = result_exhaustive_summary,
+       df_exhaustivo = df_exhaustivo,
+       result_forward_summary=result_forward_summary,
+       result_backward_summary=result_backward_summary,
+       df_forward_backward = df_forward_backward,
+       result_backward=result_backward,
+       result_forward = result_forward,
+       result_exhaustive=result_exhaustive,
+       resultado_lasso_cv=resultado_lasso_cv,
+       resultado_lasso_cv_2=resultado_lasso_cv_2,
+       design_matrix = design_matrix
+       )  
+}
+
+```
+
+```{r}
+resultados <- analisis_completo(as_df, exp(seq(log(1), log(1e-4), length = 300)))
+```
+
+
+
+```{r}
+resultados$df_exhaustivo
+```
+
+
+```{r}
+resultados$result_exhaustive_summary$bic
+```
+
+```{r}
+coef(resultados$result_exhaustive, 3)
+```
+
+
+## Forward y backward
+
+
+```{r}
+resultados$result_forward_summary$bic
+```
+
+```{r}
+resultados$result_backward_summary$bic
+
+```
+
+
+Veamos los coeficientes obtenidos:
+
+```{r}
+coef(resultados$result_exhaustive, 3)
+
+```
+
+```{r}
+coef(resultados$result_backward, 3)
+```
+
+
+
+```{r}
+coef(resultados$result_forward, 3)
+```
+
+El BIC disminuye cuando mejora la capacidad predictiva del modelo, pero a la vez incorpora una penalización por complejidad: si el agregado de parámetros no se traduce en una mejora sustantiva del ajuste, el criterio favorece modelos más parsimoniosos -con menos parámetros-. En este escenario, dado el modelo generativo y el conjunto de datos utilizado, los procedimientos de selección stepwise y la búsqueda exhaustiva convergen en soluciones muy similares, identificando de manera consistente la forma funcional correcta.
+
+Es de destacar que, sii bien la búsqueda exhaustiva garantiza evaluar todas las combinaciones posibles y por lo tanto tiene mayor probabilidad de recuperar el modelo verdadero, su costo computacional crece exponencialmente con la cantidad de predictores. 
+
+
+```{r}
+plot(resultados$resultado_lasso_cv_2); abline(v = -log(resultados$resultado_lasso_cv_2$lambda.min), col = "blue")
+```
+
+```{r}
+coef(resultados$resultado_lasso_cv_2)
+```
+En este caso, con la Regresión Lasso (y usando el lambda mínimo por cross-validation) no logra recupera correctamente la forma funcional verdadera, seleccionando el mismo conjunto de predictores relevantes que los métodos stepwise y la búsqueda exhaustiva pero además dandole cierto peso a X**4, que no forma parte del modelo generativo. El peso de esta variable, sin embargo, será muy menor y los parámetros de los coeficientes de las primeras tres variables son muy similares al proceso generador.  
+
+# Segundo modelo generativo
+
+```{r}
+n <- 100
+predictores <- rnorm(n)
+b_0 <- 10
+b_7 <- 30
+epsilons2 <- rnorm(n, mean = 0, sd = 0.5)
+mus2 <- b_0 + b_7 * (predictores **7) 
+ys2 <- mus2 + epsilons2
+
+as_df_3 <- data.frame(x=predictores,
+                    y=ys2)
+```
+```{r}
+plot(as_df_3$x, as_df_3$y)
+```
+
+
+
+
+```{r}
+resultados3 <- analisis_completo(as_df_3, exp(seq(log(1e-20), log(1e3), length = 50)))
+```
+
+```{r}
+resultados3$df_exhaustivo
+```
+
+
+```{r}
+resultados3$result_exhaustive_summary$bic
+```
+
+```{r}
+coef(resultados3$result_exhaustive, 1)
+```
+
+
+## Forward y backward
+
+
+```{r}
+resultados3$result_forward_summary$bic
+```
+
+```{r}
+resultados3$result_backward_summary$bic
+
+```
+
+
+Veamos los coeficientes obtenidos:
+
+```{r}
+coef(resultados3$result_exhaustive,  which.min(resultados3$result_exhaustive_summary$bic))
+
+```
+
+```{r}
+coef(resultados3$result_backward, which.min(resultados3$result_backward_summary$bic))
+```
+
+
+
+```{r}
+coef(resultados3$result_forward, which.min(resultados3$result_forward_summary$bic))
+```
+
+Con este nuevo modelo generativo, nuevamente los métodos stepwise y el exhaustivo logran correctamente identificar el modelo generativo.
+
+
+```{r}
+plot(resultados3$resultado_lasso_cv_2); abline(v = -log(resultados3$resultado_lasso_cv_2$lambda.min), col = "blue")
+```
+
+```{r}
+coef(resultados3$resultado_lasso_cv_2)
+```
+
+
+Con el caso de la regresión Lasso se observa que no logra identificar correctamente el modelo. Con el lambda que minimiza el error por validación cruzada, solo es veraderamente 0 el parámetro de una variable (X**3). Se aprecia nuevamente que la estimación de los coeficientes veraderos es cercana al valor con el que se generaron (10 y 30, respectivamente)-pero otras variables logran coeficientes de magnitud considerable como X⁵.
+
+
+
+# Extra:
+
+Evaluamos si el problema podía atribuirse a la presencia de observaciones con valores extremos que, por su alto leverage, estuvieran distorsionando la estimación. Sin embargo, incluso restringiendo el análisis al 50% central de los datos (eliminando así los posibles outliers de mayor magnitud), el procedimiento tampoco logró recuperar la forma funcional del modelo generativo, aunque sí se aproximó más al mismo llevando a cero en su valor óptimo de lambda a más coeficientes.
+
+```{r}
+as_df_3_filtered <- as_df_3 %>%
+  mutate(
+    Q1  = quantile(y, 0.25, na.rm = TRUE),
+    Q3  = quantile(y, 0.75, na.rm = TRUE),
+    IQR = IQR(y, na.rm = TRUE),
+    lower = Q1 - 1.5 * IQR,
+    upper = Q3 + 1.5 * IQR
+  ) %>%
+  filter(y >= lower, y <= upper) %>% 
+  select(x,y) 
+as_df_3_filtered %>% plot()
+```
+```{r}
+resultado4 <- analisis_completo(as_df_3_filtered, exp(seq(log(1e-20), log(1), length = 50)))
+plot(resultado4$resultado_lasso_cv_2); abline(v = -log(resultado4$resultado_lasso_cv_2$lambda.min), col = "blue")
+```
+
+```{r}
+coef(resultado4$resultado_lasso_cv_2)
+```

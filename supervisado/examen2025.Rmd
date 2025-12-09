@@ -1,0 +1,198 @@
+---
+title: "Examen - Herramientas aprendizaje supervisado"
+output: pdf_document
+date: "2025-12-06"
+author: OLSZEVICKI SANTIAGO 
+
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results='hold')
+#knitr::opts_chunk$set(include=FALSE)
+library(dplyr)
+library(ggplot2)
+library(caret)
+library(Matrix)
+library(lightgbm)
+library(PRROC)
+library(tibble)
+library(tidyverse)
+```
+
+
+## Ejercicio 1
+
+### 1. En función de las características estructurales de ambos árboles y de los conocimientos teóricos sobre bagging y random forest, indique cuál de los dos conjuntos de árboles considera que corresponde al modelo de bagging y cuál al modelo de random forest. Justifique su respuesta.
+
+El Modelo 1 corresponde a Bagging puro, mientras que el modelo 2 corresponde a Random Forest. Esta diferencia se evidencia principalmente en el hecho de la existencia de dos arboles perfectamente correlacionados -iguales- en el Modelo 1. Esto no ocurre con Random Forest ya que, en cada partición considera solo una porción -generalmente minoritaria- de los predictores para evaluar cuál mejora el split. De esa manera, es baja la probabilidad de que dos árboles sean iguales y permite, des-correlacionando árboles, una mejor reducción de la varianza. 
+
+### 2. Prediccion de una nueva observación en Bagging (Xi = i) para i entre 1 y 10.
+
+En bagging para regresión, la predicción se genera con el promedio de las predicciones de cada uno de los árboles. 
+En el primer arbol, la predicción es 197.9 (x4 < 14.5, x7 > -16.5 y x7 >1.5).
+En els segundo y tercero, iguales, la predicción es 61.41 (x5 > 4.5). Por lo tanto, la predicción es (303.7 +61.41 + 61.41) / 3 = 142.2.
+
+
+### 3. Compare conceptualmente los modelos de bagging y random forest. ¿Cuál de los dos se espera que presente mayor sesgo? ¿Cuál mayor varianza? Fundamente su respuesta en términos del mecanismo de construcción de cada modelo.
+
+En el método de construcción de Bagging, se ajustan árboles en muestras bootstrap. En Random Forest, a esto mismo se le adiciona el muestreo de parámetros en cada split, como se explicó anteriormente. El mecanismo se remuesteo permite reducir la varianza (frente a un árbol de decisión solo): el promedio de observaciones independientes tiene varianza menor que la de una sola observación. Esta reducción de varianza, si bien se aprecia en la práctica, no es estrictamente el caso ya que los árboles de bagging pueden estar muy correlacionados entre sí. La des-correlación entre árboles que genera Random Forest sobre estas muestras permite una mayor reducción de la varianza que bagging. Asimismo, se puede pensar a cada árbol individual de Random Forest como un modelo más simple (restringido en cada split a un subset de features), al compararlo con bagging, por lo que tenderían a tener más sesgo. Nuevamente en la práctica se aprecia que generalmente la reducción de varianza domina y random forest logra mejores resultados en predicción de datos no vistos. 
+```{r}
+library(ggplot2)
+```
+
+
+
+## Ejercicio 2
+### Para este ejercicio hay que utilizar el dataset disponible en el campus como dataset.csv. Este conjunto de datos cuenta con dos variables explicativas x1, x2 y una respuesta y cualitativa.
+
+### 1. Realice un grafico apropiado donde se pueda apreciar las observaciones y las clases.
+
+```{r}
+data <- read.csv("../../../Downloads/dataset.csv", sep = ";", row.names = 1, dec = ",") %>% mutate(y=as.factor(y))
+ggplot(data, aes(x = x1, y = x2, color = y)) + geom_point()
+```
+
+### 2. Ajuste una regresión logística y ~ x1 + x2. Como criterio de clasificación utilice que la probabilidad de clase 1 sea mayor a 0.5. 
+### Clasifique todos los datos de entrenamiento con el modelo ajustado.
+
+```{r}
+logistica <- glm(y ~ x1 + x2, data = data, family = "binomial")
+y_preds <- as.factor(as.integer(logistica$fitted.values > 0.5))
+```
+
+
+### 3. Calcular la matriz de confusión y a partir de ella calcular: Accuracy, Precision y Recall y F1 score. Explique en sus palabras que significa y/o como se interpreta cada una de estas métricas.
+
+
+```{r}
+library(caret)
+confusionMatrix(y_preds, data$y,  positive = '1')
+```
+El accuracy es la proporción de clasificaciones correctas del total evaluado. Por lo tanto, refiere a la suma de verdaderos positivos y verdaderos negativos sobre el total. En estos datos, el accuracy es del 79%, refiriendo a la suma de verdaderos negativos (274) y verdaderos positivos (42) sobre el total (400)-
+
+La precision refiere al valor predictivo positivo, es decir, a la proporción de valores clasificados como positivos que verdaderamente lo son. En estos datos, tenemos 42 verdaderos positivos dentro de los 42+22 predichos como positivos, por lo tanto es del 66%.
+
+El recall es otra métrica enfocada en la clase positiva, también llamada sensibilidad. Refiere a la proporción de casos clasificados correctamente en dicha clase. En estos datos, se detectan 42 de los 42+62 positivos, por lo tanto es del 40%.
+
+El F1-score es la media armónica entre precision y recall. Dado que estas dos métricas tienen relación inversa (cuando sube una, baja otra), esta medida permite balancear el resultado obtenido entre ambas para, en un solo valor, evaluar la capacidad de detección de la clase positiva (recall) así como ponderar una baja proporción de falsos positivos (precision). Se calcula como 
+(2) * (precision * recall) / ((1^2 * precision) + recall)) y por lo tanto es de 50%. 
+
+
+### 4. Si quisiera aumentar la precisión de la regresión logistica ajustada. Que puede hacer? Explique su respuesta y corrobore en R.
+
+Con un modelo ya ajustado y con la intención de mejorar la precision -en detrimento del recall-, se puede proceder a elegir un mejor threshold de clasificación. Si se desea mejorar la precision, es decir, reducir la proporción de falsos positivos, se puede proceder a aumentar el threshold. Así, menos muestras serán clasificadas como positivas y aumentará la proporción de verdaderos positivos sobre el total de clasificados como tal. En el ejemplo a continuación, se sube el threshold a 0.8 y se aprecia como la precision sube a 82%, mientras que el recall baja al 9%.
+
+
+```{r}
+y_preds_alternativo <- as.factor(as.integer(logistica$fitted.values > 0.8))
+precision <- sum(y_preds_alternativo == 1 & data$y == 1) / sum(y_preds_alternativo == 1)
+
+recall  <- sum(y_preds_alternativo == 1 & data$y == 1) / sum(data$y == 1)
+
+print(paste0("Precision:", round(precision,4)))
+print(paste0("Recall:",round(recall,4)))
+```
+
+
+
+5. Ajuste vecinos cercanos a los datos eligiendo la cantidad de vecinos entre 1 y 10 mediante
+validación cruzada con K = 5 cruces. Compare la precisión con la de regresión logística.
+
+```{r}
+library(FNN)
+num_folds <- 5
+k_values <- 1:10
+accs <- matrix(NA, nrow = length(k_values),ncol= num_folds)
+pres <- matrix(NA, nrow = length(k_values),ncol= num_folds)
+recalls <- matrix(NA, nrow = length(k_values),ncol= num_folds)
+folds <- sample(rep(1:num_folds, length.out = nrow(data)))
+X <- data[1:2]
+y <- data$y
+for (f in 1:num_folds) {
+  train_X <- X[folds != f, ]
+  train_y <- y[folds != f]
+  test_X <- X[folds == f, ]
+  test_y <- y[folds == f]
+  for (k in seq_along(k_values)){
+  current_k <- k_values[k]
+  preds <- FNN::knn(train_X, test_X, train_y, k = current_k)
+  accs[k, f] <- sum(preds == test_y) / length(test_y)
+  pres[k, f] <- sum(preds == 1 & test_y == 1) / sum(preds == 1)
+  recalls[k, f] <- sum(preds == 1 & test_y == 1) / sum(test_y == 1)
+  
+  }
+  
+}
+
+tibble(k_values, accs = rowMeans(accs),
+       precisions = rowMeans(pres),
+       recalls = rowMeans(recalls))
+```
+Para KNN la precision sobre los datos de entrenamiento, con k-optimo elegido por cross-validation, es mucho más alta. También lo es el recall. Sin embargo, hay que destacar que el potencial de overfitting es mucho mayor en este escenario para KNN. Por lo tanto, frente a datos nuevos, el desempeño podría ser más similar. Por eso, más arriba se reportaron las métricas out-of-sample en el fold de validación, evidenciando efectivamente una mejor performance que la logística incluso en datos no vistos.
+
+```{r}
+# Ajusto el mejor knn en todos los datos (comparable con lo que se hizo con la logistica) y calculo precision
+best_k <- 6
+preds <- FNN::knn(train = X, cl = y, test= X, k = 6)
+precision <- sum(preds == 1 & y == 1) / sum(preds == 1)
+precision
+```
+
+```{r}
+recall  <- sum(preds == 1 & y == 1) / sum(y == 1)
+recall
+```
+
+
+## Ejercicio 3
+### Utilizando la función proporcionada para generar una muestra de 200 observaciones:
+### 1. Ajuste un modelo lineal con penalización Lasso, seleccionando el parámetro de penalización lambda mediante validación cruzada de 7 particiones (7-fold CV).
+### 2. Seleccione el valor óptimo de lambda y explique detalladamente el criterio estadístico utilizado para esta elección (por ejemplo, minimización del error cuadrático medio validado).
+
+
+```{r}
+library(glmnet)
+
+generar_datos = function(n){
+set.seed(1)
+data <- as.data.frame(
+replicate(100, rnorm(n) )
+)
+names(data) <- paste0("x", 1:100)
+data$y = 2*data$x1 -data$x2 + 3*data$x3 + 0.1*data$x4 + 0.01*data$x5 + 0.001*data$x6
+data$y = data$y + rnorm(n)
+return(data)
+}
+
+datos <- generar_datos(200)
+
+grid <- 10^ seq (10, -2, length = 100) # Valores posibles de lambda
+cv.out <- cv.glmnet(x = datos %>% dplyr::select(-y) %>% as.matrix(), y = datos$y, alpha = 1 , nfolds = 7)
+plot(cv.out)
+print(cv.out$lambda.min)
+```
+El valor de lambda que se selecciona en este caso es el aquel que minimiza el error cuadrátrico medio promedio en los diferentes sets de validación. Como en este caso son 7-folds, para cada valor de lambda se ajustan 7 modelos, dejando una vez cada uno de los folds como validación y entrenando en los otros 6. De esta manera, para cada valor de lambda habrá 7 MSE de validación, y aquel lambda que minimiza el promedio de ellos es el elegido. A veces se prefiere elegir un valor más grande de lambda dentro de un desvío estandar del lambda mínimo, pero en este caso se selecciona aquel que minimiza. 
+
+### 3. Para el valor de lambda seleccionado:
+### • ¿Cuántos coeficientes del modelo resultaron estimados exactamente iguales a cero?
+### • Considerando los valores poblacionales de los coeficientes (conocidos en este contexto de simulación), ¿cuántos de esos coeficientes en cero corresponden verdaderamente a variables irrelevantes?
+
+```{r}
+
+lasso_lam <- cv.out$lambda.min
+coefs_min <- coef(cv.out, s = lasso_lam) 
+print(paste("Coeficientes exactamente cero:", length(coefs_min[coefs_min == 0])))
+coefs_min[1:10]
+```
+Se observa que de los 100 predictores, casi 90 tienen coeficientes exactamente igual a cero.  Según el modelo generador en el contexto de esta simulación, las x relevantes son x1..x6. En este caso, las primeras tienen valores parecidos a los poblacionales, pero los coeficientes asociados a x4, x5 y x6 son penalizados hasta cero. De los 86 coeficientes que son exactamente cero, 83 corresponden a variables irrelevantes, mientras que estos tres (x4, x5 y x6) no ya que son parte del proceso generador. Adicionalmente, otras variables reciben coeficiente distinto a cero y no son de relevancia para el proceso generador.
+
+
+## Ejercicio 4
+### Las siguientes curvas son ajustes de que resuelven el problema de minimización para los valores de lambda = 1, 10, 100. Determine a que lambda corresponde cada curva.
+
+En este caso se observan tres curvas de diferente suavidad ajustadas en función de la minimización de la suma de dos componentes: el error cuadrático medio y la penalización la integral de su segunda derivada. La curva roja, que representa una recta, constituye el caso de mayor penalización (lambda = 100, rojo). En este caso, el término de penalización domina de manera tal que g(X) tiene integral de segunda derivada exactamente igual a cero y por ello es una recta. En el otro extremo, un valor muy bajo de lambda (lambda = 1, violeta) permite que domine el error de ajuste en el problema de minimización, por lo que g(X) es una función muy poco suave que evidencia sobreajuste a los datos. En un caso más extremo con lambda = 0 y g(X) libre, g(X) podría pasar por todos los puntos si estos tuvieran valores Xi diferentes. En el caso intermedio de este gráfico,  (con lambda=10, azul) se alcanza un ajuste suave que sigue la forma de los datos.
+
+
+

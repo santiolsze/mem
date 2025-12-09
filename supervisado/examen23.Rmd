@@ -1,0 +1,203 @@
+---
+title: "Examen - Herramientas aprendizaje supervisado"
+output: pdf_document
+date: "2023-12-02"
+author: OLSZEVICKI SANTIAGO 
+
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results='hold')
+#knitr::opts_chunk$set(include=FALSE)
+```
+
+
+## Ejercicio 1
+
+Para este ejercicio usaremos el data set **Carseats** de la libreria ISLR2.
+
+
+```{r librerias_ejercicio_1, echo=FALSE}
+
+rm(list = ls())
+library(ISLR2)
+library(tree)
+library(dplyr)
+```
+
+
+a. Separe el data set en una muestra de entrenamiento y otra de testeo. Para la primera seleccione 300 observaciones al azar.
+
+```{r ej1-itema}
+set.seed(123456)
+Carseats['ShelveLoc'] = ifelse(Carseats$ShelveLoc == 'Bad', 0, ifelse(Carseats$ShelveLoc == 'Medium', 1, 2))
+
+train.split <- sample (1: nrow(Carseats ), 300)
+
+train <- Carseats[train.split, ]
+test <- Carseats[-train.split, ]
+
+```
+
+
+b. Ajuste un árbol para predecir Sales en función de todas las variables. Pruneelo para que tenga 5 nodos terminales. Grafique el arbol e interprete.
+
+```{r ej1-itemb}
+semilla = 123456
+set.seed(semilla)
+tree.full <- tree(Sales ~ ., data = train)
+tree.pruned <- prune.tree(tree.full, best = 5)
+plot(tree.pruned)
+text(tree.pruned, pretty = 0)
+```
+
+c. Cual es la cantidad de nodos terminales que sugiere validación cruzada de 10 cruces?
+
+```{r ej1-itemc}
+set.seed(semilla)
+cv.sales <- cv.tree(tree.full, K = 5)
+
+
+par(mfrow = c(1, 2))
+plot(cv.sales$size, cv.sales$dev, type = "b", xlab= 'Nodos del arbol', ylab = 'Deviance') 
+
+plot(cv.sales$k, cv.sales$dev, type = "b", xlab = 'alfa', ylab = 'Deviance') # k corresponde al alpha de validacion cruzada
+
+
+tree.pruned.best = prune.tree(tree.full, best = cv.sales$size[which.min(cv.sales$dev)], )
+par(mfrow = c(1,3))
+
+plot(tree.full)
+#text(tree.full, pretty = 0)
+
+plot(tree.pruned.best)
+#text(tree.pruned.best, pretty = 0)
+
+plot(tree.pruned)
+```
+
+d. Calcule el MSE de testeo y de entrenamiento para el arbol sin prunear y el arbol con 5 nodos terminales. ¿Cuál de los dos arboles prefiere? 
+
+```{r, ej1-itemd}
+set.seed(123456)
+mse <- function(true, pred){
+  sum((true - pred)^2) / length(true)
+}
+
+a <- mse(train$Sales,  predict(tree.pruned, newdata = train))
+b <- mse(test$Sales,  predict(tree.pruned, newdata = test))
+
+c <- mse(train$Sales,  predict(tree.full, newdata = train))
+d <- mse(test$Sales,  predict(tree.full, newdata = test))
+
+print(paste("5 nodos: MSE train y test:", round(a, 2),"|", round(b,2)))
+print(paste("Full: MSE train y test:", round(c, 2),"|", round(d,2)))
+
+```
+
+e. Explique como funciona bagging de árboles. Utilizando 500 arboles sin prunear prediga el valor de la primer observación de su conjunto de testeo. Para este item solo puede usar las funciones : **tree()**, **predict()** y **sample()**.  
+
+```{r ej1-iteme}
+set.seed(semilla)
+entrenar_arbol <- function(data){
+  tree(Sales ~ ., data = data)
+}
+
+bagging.test.preds <- c()
+for (i in 1:500){
+  train.boot <-  sample (1: nrow(train), nrow(train), replace = T)
+  tree.boot <- entrenar_arbol(train[train.boot,])
+  pred <- predict(tree.boot, newdata = test)[1]
+  bagging.test.preds <- c(bagging.test.preds, pred)
+}
+
+hist(bagging.test.preds)
+prediccion_final<- mean(bagging.test.preds %>% unlist())
+prediccion_final
+```
+
+
+## Ejercicio 2
+
+Para este ejercicio consideramos el data set **diabetes** que pueden descargar del campus. Estos corresponden a distintas variables médicas y si el paciente presenta diabetes (1) o no (0).
+
+   a. Ajuste una regresión logística y muestre el resumen del modelo ajustado. 
+      Diría que la edad incrementa las chances de tener diabetes o no? Justifique su respuesta. 
+
+Sí, las incrementa porque tiene un coeficiente positivo en este modelo (b_age = 0.05), lo que corresponde con un OR de 1.05; de esta manera, el aumento de un año según este modelo aumenta las odds de tener diabetes en 5%. 
+```{r ej2-itema}
+rm(list = ls())
+
+data <- read.csv("../../../Downloads/diabetes (1).csv")
+head(data, 2)
+
+logistica <- glm(diabetes ~ . , data =data, family = "binomial")
+summary(logistica)
+
+```
+
+   b. En la busqueda de un modelo mas sencillo, elija un subconjunto de las variables explicativas. Explique el     criterio que utiliza y describa su funcionamiento brevemente.
+
+```{r ej2-itemb}
+library(leaps)
+results.best <- leaps:::regsubsets(x=data %>% select(-diabetes),
+                   y=data$diabetes,
+                   intercept = TRUE,
+                   nvmax = 5,
+                   method="exhaustive")
+
+results.best.summary <- summary(results.best)
+features <-as.data.frame( results.best.summary$which)
+features$BIC <- results.best.summary$bic
+features %>% slice_min(BIC)
+```
+El modelo final contiene todas las variables salvo triceps y pressure. Para llegar a este modelo se usó best-subset selection, que consiste en ajustar todos los posibles modelos aditivos de  (con k de 1 a la cantidad total de features iniciales) variables sobre los datos de entrenamiento, y elegir el que mejor ajusta a los datos de entrenamiento (RSS) para cada valor de k dentro de los posibles. Luego, se compara el BIC de los modelos de diferente cantidad de variables, métrica que contempla tanto el ajuste a los datos (mediante la verosimilitud) como una penalización por complejidad. De esta manera, se elige aquel modelo que minimice esta métrica.
+
+
+   c. Si la probabilidad de tener diabes es mayor a $0.25$ la persona se consider en riesgo. Con el ultimo modelo ajustado clasifique las individuos que se encuentran en el archivo **diabetes_riesgo.csv** entre riesgo o no riesgo.
+
+```{r ej2-itemc}
+newdata <- read.csv("../../../Downloads/diabetes_riesgo.csv")
+modelo <- glm(formula = diabetes ~ . -triceps -pressure, family = "binomial", data = data)
+predict(modelo, newdata = newdata, type = "response") > 0.25
+```
+Este modelo clasificaría a los individuos #1 y #4 como diabéticos, y no al resto. 
+
+d. Como se llama el modelo que ajusta el siguiente codigo comentado? Interprete el gráfico que produce. 
+
+El modelo es un GAM (General Additive Model),que permite ajustar funciones no lineales para uno o más parámetros. En este caso, mediante un smoothing spline para la edad con 4 grados de libertad, manteniendo una relación lineal para la glucosa. Produce dos gráficos: uno para glucosa y otro para edad. Dado que la relación de glucosa se forzó lineal, muestra que el efecto es constante para todo el rango de valores. En cambio, la relación de la edad con su parámetro demuestra que manteniendo la glucosa constante, el riesgo de diabetes aumenta desde la adultez temprana hasta tener un máximo en torno a los 50 años, y luego disminuye nuevamente hacia edades avanzadas. 
+```{r echo = TRUE, include= TRUE}
+library(splines)
+library(gam)
+fit2 = gam(diabetes ~  glucose + s(age,4) , data = data, family = binomial)
+plot(fit2)
+```
+
+
+
+## Ejercicio 3 
+
+a. El servicio meteorogologico nacional tiene un sistema de alerta temprana para tormentas de alto riesgo para la población. Cual de las siguientes metodologías de clasifiación en tormenta de alto riesgo y no tormenta de alto riesgo le parece mas apropiada que use ? Jusitificque su respuesta. (Se considera la clase positiva a pronosticar tormenta de alto riesgo).
+
+```{r , echo=FALSE}
+print(data.frame( metodo = c('A', 'B', 'C'), accuracy = c('99%', '95%', '95%'), precision = c('85%', '99%', '90%'),  recall = c('80%', '90%', '97%')))
+```
+Las tormentas de algo riesgo son un fenómeno infrecuente, evidenciado en las métricas por un desacople entre accuracy (que es insensible a cuál es la clase positiva y negativa) y las otras dos métricas. El modelo A es el peor, tanto en términos de predecir la mayor cantidad posible de tormentas de alto riesgo (recall = 80%, se pierde el 20%) y en términos de la probabilidad de que una tormenta pronosticada como de alto riesgo efectivamente lo sea (precision = 85%, tasa de falsos positivos =  15%). Entre los otros dos, se debe elegir en el trade-off entre precision y recall. Para un sistema de alerta temprana como el descripto, se tiende a aceptar una mayor tasa de falsos positivos, para tener un aumento de sensibilidad/recall. Es decir, se prioriza el falso negativo (no predecir alto riesgo cuando la tormenta lo será) que el falso positivo (predecir y que no ocurra). Por lo dicho, se elige el modelo C.
+
+
+
+b. Se ajustó un modelo de regresión lineal por cuadrados mínimos, Ridge y Lasso. En la siguiente tabla se encuentran los coeficientes estimados para $x_1$, $x_2$ $x_3$ en cada uno de los métodos pero en un descuido se perdieron las etiquetas que indican la metodología que uso. Ayude a decifrar a que metodología pertenece cada uno? Justifique sus respuesta.
+
+
+```{r echo = FALSE}
+print(data.frame( ajuste = c('####', '????', '****'), beta1 = c(1.5 , 1.7, 1.55) , beta2 = c(0, -0.25, -0.1),  beta3 = c(-1.5, -1, -0.7)))
+```
+Tanto Ridge como Lasso tienden a reducir el valor absoluto de los coeficientes. Por lo tanto, el modelo sin penalización es ?????. Asimismo, en Ridge los coeficientes se reducen pero nunca son exactamente iguales a cero (no hace seleccion de variables) y Lasso sí. Por lo tanto, ##### = Lasso, ???? = LM y ***** = Ridge.
+
+c. Se ajusto un vecinos mas cercanos y se sospecha que el modelo está sobreajustando los datos. Cuál de las siguientes opciones elige? Justifique.
+   1. Hacer el ajuste utilizando un menor número de vecinos.
+   2. Hacer el ajuste con un mayor número de vecinos. [ESTA]
+   3. Estandarizar las variables explicativas ya que vecinos cercanos trabaja con distancias.
+   4. Ninguna de las anteriores.
